@@ -55,7 +55,6 @@ class SpoSiteClassicRemoveCommand extends SpoCommand {
   public commandAction(cmd: CommandInstance, args: CommandArgs, cb: () => void): void {
 
     const removeSite: () => void = (): void => {
-      // implement remove site
       auth
         .ensureAccessToken(auth.service.resource, cmd, this.debug)
         .then((accessToken: string): Promise<void> => {
@@ -67,34 +66,67 @@ class SpoSiteClassicRemoveCommand extends SpoCommand {
 
           return this.ensureFormDigest(cmd);
         })
-        .then((): Promise<boolean> => {
-          // Do we want this to validate if the site exists? 
-          return Promise.resolve(true);
-
-        })
         .then((): request.RequestPromise => {
           if (this.verbose) {
             cmd.log(`Deleting site collection ${args.options.url}...`);
           }
 
-          // todo: implement correct body
-          var body = ""; //`<Request AddExpandoFieldTypeSuffix="true" SchemaVersion="15.0.0.0" LibraryVersion="16.0.0.0" ApplicationName="${config.applicationName}" xmlns="http://schemas.microsoft.com/sharepoint/clientquery/2009"><Actions><ObjectPath Id="4" ObjectPathId="3" /><ObjectPath Id="6" ObjectPathId="5" /><Query Id="7" ObjectPathId="3"><Query SelectAllProperties="true"><Properties /></Query></Query><Query Id="8" ObjectPathId="5"><Query SelectAllProperties="false"><Properties><Property Name="IsComplete" ScalarProperty="true" /><Property Name="PollingInterval" ScalarProperty="true" /></Properties></Query></Query></Actions><ObjectPaths><Constructor Id="3" TypeId="{268004ae-ef6b-4e9b-8425-127220d84719}" /><Method Id="5" ParentId="3" Name="CreateSite"><Parameters><Parameter TypeId="{11f84fff-b8cf-47b6-8b50-34e692656606}"><Property Name="CompatibilityLevel" Type="Int32">0</Property><Property Name="Lcid" Type="UInt32">${lcid}</Property><Property Name="Owner" Type="String">${Utils.escapeXml(args.options.owner)}</Property><Property Name="StorageMaximumLevel" Type="Int64">${storageQuota}</Property><Property Name="StorageWarningLevel" Type="Int64">${storageQuotaWarningLevel}</Property><Property Name="Template" Type="String">${Utils.escapeXml(webTemplate)}</Property><Property Name="TimeZoneId" Type="Int32">${args.options.timeZone}</Property><Property Name="Title" Type="String">${Utils.escapeXml(args.options.title)}</Property><Property Name="Url" Type="String">${Utils.escapeXml(args.options.url)}</Property><Property Name="UserCodeMaximumLevel" Type="Double">${resourceQuota}</Property><Property Name="UserCodeWarningLevel" Type="Double">${resourceQuotaWarningLevel}</Property></Parameter></Parameters></Method></ObjectPaths></Request>`; 
+          var body = `<Request xmlns="http://schemas.microsoft.com/sharepoint/clientquery/2009" AddExpandoFieldTypeSuffix="true" SchemaVersion="15.0.0.0" LibraryVersion="16.0.0.0" ApplicationName="${config.applicationName}">
+            <Actions>
+              <ObjectPath Id="55" ObjectPathId="54"/>
+              <ObjectPath Id="57" ObjectPathId="56"/>
+              <Query Id="58" ObjectPathId="54">
+                <Query SelectAllProperties="true">
+                  <Properties/>
+                </Query>
+              </Query>
+              <Query Id="59" ObjectPathId="56">
+                <Query SelectAllProperties="false">
+                  <Properties>
+                    <Property Name="IsComplete" ScalarProperty="true"/>
+                    <Property Name="PollingInterval" ScalarProperty="true"/>
+                  </Properties>
+                </Query>
+              </Query>
+            </Actions>
+            <ObjectPaths>
+              <Constructor Id="54" TypeId="{268004ae-ef6b-4e9b-8425-127220d84719}"/>
+              <Method Id="56" ParentId="54" Name="RemoveSite">
+                <Parameters>
+                  <Parameter Type="String">${Utils.escapeXml(args.options.url)}</Parameter>
+                </Parameters>
+              </Method>
+            </ObjectPaths>
+          </Request>`; 
 
-          if (args.options.skipReycleBin) {
-            if (this.verbose) {
-              cmd.log(`Directly remove the site without moving it to the Recycle Bin `);
-            }
-
-            // todo: implement correct body
-            body = 'anderebodyuitzoeken';
-          }
+          // todo implement the fromRecycleBin Auto when --skiprecyclebin is implemented
           if(args.options.fromRecycleBin){
             if (this.verbose) {
               cmd.log(`Permanitly remove the site from the Recycle Bin `);
             }
 
-            // todo: implement correct body
-            body = 'anderebodyuitzoeken'; 
+            body = `<Request xmlns="http://schemas.microsoft.com/sharepoint/clientquery/2009" AddExpandoFieldTypeSuffix="true" SchemaVersion="15.0.0.0" LibraryVersion="16.0.0.0" ApplicationName="${config.applicationName}">
+            <Actions>
+              <ObjectPath Id="63" ObjectPathId="62"/>
+              <ObjectPath Id="65" ObjectPathId="64"/>
+              <Query Id="66" ObjectPathId="64">
+                <Query SelectAllProperties="false">
+                  <Properties>
+                    <Property Name="IsComplete" ScalarProperty="true"/>
+                    <Property Name="PollingInterval" ScalarProperty="true"/>
+                  </Properties>
+                </Query>
+              </Query>
+            </Actions>
+            <ObjectPaths>
+              <Constructor Id="62" TypeId="{268004ae-ef6b-4e9b-8425-127220d84719}"/>
+              <Method Id="64" ParentId="62" Name="RemoveDeletedSite">
+                <Parameters>
+                  <Parameter Type="String">${Utils.escapeXml(args.options.url)}</Parameter>
+                </Parameters>
+              </Method>
+            </ObjectPaths>
+          </Request>`; 
           }
 
           const requestOptions: any = {
