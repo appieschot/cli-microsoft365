@@ -22,6 +22,8 @@ interface CommandArgs {
 interface Options extends GlobalOptions {
   url: string;
   skipReycleBin?: boolean;
+  fromRecycleBin?: boolean;
+  wait?: boolean;
   confirm?: boolean;
 }
 
@@ -44,6 +46,8 @@ class SpoSiteClassicRemoveCommand extends SpoCommand {
     const telemetryProps: any = super.getTelemetryProperties(args);
     telemetryProps.url = (!(!args.options.url)).toString();
     telemetryProps.skipReycleBin = (!(!args.options.skipReycleBin)).toString();
+    telemetryProps.fromRecycleBin = (!(!args.options.fromRecycleBin)).toString();
+    telemetryProps.wait = (!(!args.options.wait)).toString();
     telemetryProps.confirm = (!(!args.options.confirm)).toString();
     return telemetryProps;
   }
@@ -68,37 +72,31 @@ class SpoSiteClassicRemoveCommand extends SpoCommand {
           return Promise.resolve(true);
 
         })
-        .then((exists: boolean): Promise<void> => {
-          if (exists) {
-            if (this.verbose) {
-              cmd.log('The site does exists, so we can safely remove.');
-            }
-
-            return Promise.resolve(); 
-          }
-          else {
-            if (this.verbose) {
-              cmd.log('Site not found, cannot be deleted');
-            }
-
-            return Promise.resolve();
-          }
-        })
-        .then((): Promise<void> => {
-          return this.ensureFormDigest(cmd);
-        })
         .then((): request.RequestPromise => {
           if (this.verbose) {
             cmd.log(`Deleting site collection ${args.options.url}...`);
           }
 
+          // todo: implement correct body
           var body = ""; //`<Request AddExpandoFieldTypeSuffix="true" SchemaVersion="15.0.0.0" LibraryVersion="16.0.0.0" ApplicationName="${config.applicationName}" xmlns="http://schemas.microsoft.com/sharepoint/clientquery/2009"><Actions><ObjectPath Id="4" ObjectPathId="3" /><ObjectPath Id="6" ObjectPathId="5" /><Query Id="7" ObjectPathId="3"><Query SelectAllProperties="true"><Properties /></Query></Query><Query Id="8" ObjectPathId="5"><Query SelectAllProperties="false"><Properties><Property Name="IsComplete" ScalarProperty="true" /><Property Name="PollingInterval" ScalarProperty="true" /></Properties></Query></Query></Actions><ObjectPaths><Constructor Id="3" TypeId="{268004ae-ef6b-4e9b-8425-127220d84719}" /><Method Id="5" ParentId="3" Name="CreateSite"><Parameters><Parameter TypeId="{11f84fff-b8cf-47b6-8b50-34e692656606}"><Property Name="CompatibilityLevel" Type="Int32">0</Property><Property Name="Lcid" Type="UInt32">${lcid}</Property><Property Name="Owner" Type="String">${Utils.escapeXml(args.options.owner)}</Property><Property Name="StorageMaximumLevel" Type="Int64">${storageQuota}</Property><Property Name="StorageWarningLevel" Type="Int64">${storageQuotaWarningLevel}</Property><Property Name="Template" Type="String">${Utils.escapeXml(webTemplate)}</Property><Property Name="TimeZoneId" Type="Int32">${args.options.timeZone}</Property><Property Name="Title" Type="String">${Utils.escapeXml(args.options.title)}</Property><Property Name="Url" Type="String">${Utils.escapeXml(args.options.url)}</Property><Property Name="UserCodeMaximumLevel" Type="Double">${resourceQuota}</Property><Property Name="UserCodeWarningLevel" Type="Double">${resourceQuotaWarningLevel}</Property></Parameter></Parameters></Method></ObjectPaths></Request>`; 
 
-          // ToDo implement skiprecylebin
-          if(args.options.skipReycleBin){
+          if (args.options.skipReycleBin) {
+            if (this.verbose) {
+              cmd.log(`Directly remove the site without moving it to the Recycle Bin `);
+            }
+
+            // todo: implement correct body
             body = 'anderebodyuitzoeken';
           }
-          
+          if(args.options.fromRecycleBin){
+            if (this.verbose) {
+              cmd.log(`Permanitly remove the site from the Recycle Bin `);
+            }
+
+            // todo: implement correct body
+            body = 'anderebodyuitzoeken'; 
+          }
+
           const requestOptions: any = {
             url: `${auth.site.url}/_vti_bin/client.svc/ProcessQuery`,
             headers: Utils.getRequestHeaders({
@@ -131,11 +129,16 @@ class SpoSiteClassicRemoveCommand extends SpoCommand {
             }
             else {
               const operation: SpoOperation = json[json.length - 1];
-              //let isComplete: boolean = operation.IsComplete;
+              let isComplete: boolean = operation.IsComplete;
 
-              //this.timeout = setTimeout(() => {
-              //  this.waitUntilFinished(JSON.stringify(operation._ObjectIdentity_), resolve, reject, this.accessToken as string, cmd);
-              //}, operation.PollingInterval);
+              if (!args.options.wait || isComplete) {
+                resolve();
+                return;
+              }
+
+              this.timeout = setTimeout(() => {
+                this.waitUntilFinished(JSON.stringify(operation._ObjectIdentity_), resolve, reject, this.accessToken as string, cmd);
+              }, operation.PollingInterval);
             }
           });
         })
@@ -201,6 +204,67 @@ class SpoSiteClassicRemoveCommand extends SpoCommand {
     });
   }
 
+  private waitUntilFinished(operationId: string, resolve: () => void, reject: (error: any) => void, accessToken: string, cmd: CommandInstance): void {
+    this
+      .ensureFormDigest(cmd)
+      .then((): request.RequestPromise => {
+        if (this.debug) {
+          cmd.log(`Checking if operation ${operationId} completed...`);
+        }
+
+        if (!this.debug && this.verbose) {
+          this.dots += '.';
+          process.stdout.write(`\r${this.dots}`);
+        }
+
+        const requestOptions: any = {
+          url: `${auth.site.url}/_vti_bin/client.svc/ProcessQuery`,
+          headers: Utils.getRequestHeaders({
+            authorization: `Bearer ${auth.service.accessToken}`,
+            'X-RequestDigest': this.formDigest
+          }),
+          body: `<Request AddExpandoFieldTypeSuffix="true" SchemaVersion="15.0.0.0" LibraryVersion="16.0.0.0" ApplicationName="${config.applicationName}" xmlns="http://schemas.microsoft.com/sharepoint/clientquery/2009"><Actions><Query Id="188" ObjectPathId="184"><Query SelectAllProperties="false"><Properties><Property Name="IsComplete" ScalarProperty="true" /><Property Name="PollingInterval" ScalarProperty="true" /></Properties></Query></Query></Actions><ObjectPaths><Identity Id="184" Name="${operationId.replace(/\\n/g, '&#xA;').replace(/"/g, '')}" /></ObjectPaths></Request>`
+        };
+
+        if (this.debug) {
+          cmd.log('Executing web request...');
+          cmd.log(requestOptions);
+          cmd.log('');
+        }
+
+        return request.post(requestOptions);
+      })
+      .then((res: string): void => {
+        if (this.debug) {
+          cmd.log('Response:');
+          cmd.log(res);
+          cmd.log('');
+        }
+
+        const json: ClientSvcResponse = JSON.parse(res);
+        const response: ClientSvcResponseContents = json[0];
+        if (response.ErrorInfo) {
+          reject(response.ErrorInfo.ErrorMessage);
+        }
+        else {
+          const operation: SpoOperation = json[json.length - 1];
+          let isComplete: boolean = operation.IsComplete;
+          if (isComplete) {
+            if (this.verbose) {
+              process.stdout.write('\n');
+            }
+
+            resolve();
+            return;
+          }
+
+          this.timeout = setTimeout(() => {
+            this.waitUntilFinished(JSON.stringify(operation._ObjectIdentity_), resolve, reject, accessToken, cmd);
+          }, operation.PollingInterval);
+        }
+      });
+  }
+
   public options(): CommandOption[] {
     const options: CommandOption[] = [
       {
@@ -210,6 +274,14 @@ class SpoSiteClassicRemoveCommand extends SpoCommand {
       {
         option: '--skipRecycleBin',
         description: 'set to directly remove the site without moving it to the Recycle Bin'
+      },
+      {
+        option: '--fromRecycleBin',
+        description: 'set to remove the site from the Recycle Bin'
+      },
+      {
+        option: '--wait',
+        description: 'Wait for the site to be removed before completing the command'
       },
       {
         option: '--confirm',
@@ -236,31 +308,46 @@ class SpoSiteClassicRemoveCommand extends SpoCommand {
     };
   }
 
-  // todo implement
   public commandHelp(args: {}, log: (help: string) => void): void {
     const chalk = vorpal.chalk;
     log(vorpal.find(this.name).helpInformation());
     log(
-      `  ${chalk.yellow('Important:')} before using this command, connect to a SharePoint Online site,
+      `  ${chalk.yellow('Important:')} before using this command, connect to a SharePoint Online tenant admin site,
     using the ${chalk.blue(commands.CONNECT)} command.
-  
+
   Remarks:
   
-    To remove a list, you have to first connect to SharePoint using the
-    ${chalk.blue(commands.CONNECT)} command, eg. ${chalk.grey(`${config.delimiter} ${commands.CONNECT} https://contoso.sharepoint.com`)}.
+    To remove a classic site, you have to first connect to a tenant admin
+    site using the ${chalk.blue(commands.CONNECT)} command,
+    eg. ${chalk.grey(`${config.delimiter} ${commands.CONNECT} https://contoso-admin.sharepoint.com`)}.
         
+    Deleting and creating classic site collections is by default asynchronous
+    and depending on the current state of Office 365, might take up to few
+    minutes. If you're building a script with steps that require the site to be
+    fully provisioned, you should use the ${chalk.blue('--wait')} flag. When
+    using this flag, the ${chalk.blue(this.getCommandName())} command will keep
+    running until it received confirmation from Office 365 that the site
+    has been fully provisioned.
+
   Examples:
   
-    Remove the list with ID ${chalk.grey('0cd891ef-afce-4e55-b836-fce03286cccf')} located in site
+    Remove the site based on URL, and place it in the recycle bin
     ${chalk.grey('https://contoso.sharepoint.com/sites/project-x')}
-      ${chalk.grey(config.delimiter)} ${commands.LIST_REMOVE} --webUrl https://contoso.sharepoint.com/sites/project-x --id 0cd891ef-afce-4e55-b836-fce03286cccf
+      ${chalk.grey(config.delimiter)} ${commands.SITE_CLASSIC_REMOVE} --url https://contoso.sharepoint.com/sites/project-x 
 
-    Remove the list with title ${chalk.grey('List 1')} located in site
-    ${chalk.grey('https://contoso.sharepoint.com/sites/project-x')} 
-      ${chalk.grey(config.delimiter)} ${commands.LIST_REMOVE} --webUrl https://contoso.sharepoint.com/sites/project-x --title 'List 1'
+    Remove the site based on URL permanitly 
+      ${chalk.grey('https://contoso.sharepoint.com/sites/project-x')}
+        ${chalk.grey(config.delimiter)} ${commands.SITE_CLASSIC_REMOVE} --url https://contoso.sharepoint.com/sites/project-x --skipRecycleBin
+
+    Remove the site based on URL from the recycle bin
+      ${chalk.grey('https://contoso.sharepoint.com/sites/project-x')}
+        ${chalk.grey(config.delimiter)} ${commands.SITE_CLASSIC_REMOVE} --url https://contoso.sharepoint.com/sites/project-x --fromRecycleBin
+
+    Remove the site based on URL permanitly and wait for completion 
+      ${chalk.grey('https://contoso.sharepoint.com/sites/project-x')}
+        ${chalk.grey(config.delimiter)} ${commands.SITE_CLASSIC_REMOVE} --url https://contoso.sharepoint.com/sites/project-x --wait --skipRecycleBin
       `);
   }
 }
-
 
 module.exports = new SpoSiteClassicRemoveCommand();
