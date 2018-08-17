@@ -21,7 +21,7 @@ interface CommandArgs {
 
 interface Options extends GlobalOptions {
   url: string;
-  skipReycleBin?: boolean;
+  skipRecycleBin?: boolean;
   fromRecycleBin?: boolean;
   wait?: boolean;
   confirm?: boolean;
@@ -44,7 +44,7 @@ class SpoSiteClassicRemoveCommand extends SpoCommand {
   public getTelemetryProperties(args: CommandArgs): any {
     const telemetryProps: any = super.getTelemetryProperties(args);
     telemetryProps.url = (!(!args.options.url)).toString();
-    telemetryProps.skipReycleBin = (!(!args.options.skipReycleBin)).toString();
+    telemetryProps.skipRecycleBin = (!(!args.options.skipRecycleBin)).toString();
     telemetryProps.fromRecycleBin = (!(!args.options.fromRecycleBin)).toString();
     telemetryProps.wait = (!(!args.options.wait)).toString();
     telemetryProps.confirm = (!(!args.options.confirm)).toString();
@@ -84,23 +84,27 @@ class SpoSiteClassicRemoveCommand extends SpoCommand {
           return this.processResponse(res, cmd, args);
         })
         .then((): Promise<void> => {
+          // Skip Recycle Bin combines the deletion and removal. 
+          // We can only remove from the recycle bin after a succesfull deletion action
+          // Therefore an additional call has to be made in case of the skipRecycleBin
           return new Promise<void>((resolve: () => void, reject: (error: any) => void): void => {
-            // ToDo propper implement
-            // Skip Recycle Bin combines the deletion and removal. 
-            // We can only remove from the recycle bin after a succesfull deletion action
-            // Therefore an additional call has to be made in case of the skipRecycleBin
-            if (args.options.skipReycleBin) {
+            if (args.options.skipRecycleBin) {
               if (this.verbose) {
                 cmd.log(`Also deleting site collection from recycle bin ${args.options.url}...`)
               }
 
-              request.post(this.getRequestDeleteSiteFromRecycleBin(args, cmd)).then((res: string): Promise<void> => {
-                return this.processResponse(res, cmd, args);
-              });
+              // TODO: 15 sec is timeout based on polling intervall, check PowerShell to see what value should be oke
+              setTimeout(() => {
+                request.post(this.getRequestDeleteSiteFromRecycleBin(args, cmd)).then((res: string): void => {
+                  this.processResponse(res, cmd, args).then((): void => {
+                    return resolve();
+                  });
+                });
+              }, 15000)
+
             }
             else {
-              resolve();
-              return;
+              return resolve();
             }
           });
         })
