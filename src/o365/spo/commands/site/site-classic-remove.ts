@@ -7,7 +7,8 @@ import { ContextInfo, ClientSvcResponse, ClientSvcResponseContents } from '../..
 import * as request from 'request-promise-native';
 import {
   CommandOption,
-  CommandValidate
+  CommandValidate, 
+  CommandCancel
 } from '../../../../Command';
 import SpoCommand from '../../SpoCommand';
 import Utils from '../../../../Utils';
@@ -32,6 +33,7 @@ class SpoSiteClassicRemoveCommand extends SpoCommand {
   private formDigestExpiresAt?: Date;
   private accessToken?: string;
   private dots?: string;
+  private timeout?: NodeJS.Timer;
 
   public get name(): string {
     return commands.SITE_CLASSIC_REMOVE;
@@ -39,6 +41,10 @@ class SpoSiteClassicRemoveCommand extends SpoCommand {
 
   public get description(): string {
     return 'Removes the specified site';
+  }
+
+  protected requiresTenantAdmin(): boolean {
+    return true;
   }
 
   public getTelemetryProperties(args: CommandArgs): any {
@@ -52,6 +58,8 @@ class SpoSiteClassicRemoveCommand extends SpoCommand {
   }
 
   public commandAction(cmd: CommandInstance, args: CommandArgs, cb: () => void): void {
+    this.dots = '';
+
     const removeSite: () => void = (): void => {
       auth
         .ensureAccessToken(auth.service.resource, cmd, this.debug)
@@ -94,7 +102,7 @@ class SpoSiteClassicRemoveCommand extends SpoCommand {
               }
 
               // TODO: 15 sec is timeout based on polling intervall, check PowerShell to see what value should be oke
-              setTimeout(() => {
+              this.timeout = setTimeout(() => {
                 request.post(this.getRequestDeleteSiteFromRecycleBin(args, cmd)).then((res: string): void => {
                   this.processResponse(res, cmd, args).then((): void => {
                     return resolve();
@@ -104,7 +112,7 @@ class SpoSiteClassicRemoveCommand extends SpoCommand {
 
             }
             else {
-              return resolve();
+              Promise.resolve();
             }
           });
         })
@@ -137,6 +145,14 @@ class SpoSiteClassicRemoveCommand extends SpoCommand {
     }
   }
 
+  public cancel(): CommandCancel {
+    return (): void => {
+      if (this.timeout) {
+        clearTimeout(this.timeout);
+      }
+    }
+  }
+  
   private ensureFormDigest(cmd: CommandInstance): Promise<void> {
     return new Promise<void>((resolve: () => void, reject: (error: any) => void): void => {
       const now: Date = new Date();
@@ -230,7 +246,7 @@ class SpoSiteClassicRemoveCommand extends SpoCommand {
           return;
         }
 
-        setTimeout(() => {
+        this.timeout = setTimeout(() => {
           this.waitUntilFinished(JSON.stringify(operation._ObjectIdentity_), resolve, reject, this.accessToken as string, cmd);
         }, operation.PollingInterval);
       }
@@ -291,7 +307,7 @@ class SpoSiteClassicRemoveCommand extends SpoCommand {
             return;
           }
 
-          setTimeout(() => {
+          this.timeout = setTimeout(() => {
             this.waitUntilFinished(JSON.stringify(operation._ObjectIdentity_), resolve, reject, accessToken, cmd);
           }, operation.PollingInterval);
         }
