@@ -1,17 +1,12 @@
 import auth from '../../SpoAuth';
 import config from '../../../../config';
 import commands from '../../commands';
-import GlobalOptions from '../../../../GlobalOptions';
-import { ContextInfo, ClientSvcResponse, ClientSvcResponseContents } from '../../spo';
-
 import * as request from 'request-promise-native';
-import {
-  CommandOption,
-  CommandValidate, 
-  CommandCancel
-} from '../../../../Command';
 import SpoCommand from '../../SpoCommand';
 import Utils from '../../../../Utils';
+import { CommandOption, CommandValidate, CommandCancel } from '../../../../Command';
+import GlobalOptions from '../../../../GlobalOptions';
+import { ContextInfo, ClientSvcResponse, ClientSvcResponseContents } from '../../spo';
 import { SpoOperation } from './SpoOperation';
 
 const vorpal: Vorpal = require('../../../../vorpal-init');
@@ -24,7 +19,7 @@ interface Options extends GlobalOptions {
   url: string;
   skipRecycleBin?: boolean;
   fromRecycleBin?: boolean;
-  wait?: boolean;
+  wait: boolean;
   confirm?: boolean;
 }
 
@@ -52,15 +47,15 @@ class SpoSiteClassicRemoveCommand extends SpoCommand {
     telemetryProps.url = (!(!args.options.url)).toString();
     telemetryProps.skipRecycleBin = (!(!args.options.skipRecycleBin)).toString();
     telemetryProps.fromRecycleBin = (!(!args.options.fromRecycleBin)).toString();
-    telemetryProps.wait = (!(!args.options.wait)).toString();
+    telemetryProps.wait = args.options.wait;
     telemetryProps.confirm = (!(!args.options.confirm)).toString();
     return telemetryProps;
   }
 
   public commandAction(cmd: CommandInstance, args: CommandArgs, cb: () => void): void {
-    this.dots = '';
+    const removeSite = (): void => {
+      this.dots = '';
 
-    const removeSite: () => void = (): void => {
       auth
         .ensureAccessToken(auth.service.resource, cmd, this.debug)
         .then((accessToken: string): Promise<void> => {
@@ -72,49 +67,36 @@ class SpoSiteClassicRemoveCommand extends SpoCommand {
 
           return this.ensureFormDigest(cmd);
         })
-        .then((): request.RequestPromise => {
+        .then((): Promise<void> => {
           if (args.options.fromRecycleBin) {
             if (this.verbose) {
               cmd.log(`Deleting site collection from recycle bin ${args.options.url}...`);
             }
 
-            return request.post(this.getRequestDeleteSiteFromRecycleBin(args, cmd));
+            return this.deleteSiteFromTheRecycleBin(args.options.url, args.options.wait, this.accessToken as string, cmd);
           }
           else {
             if (this.verbose) {
               cmd.log(`Deleting site collection ${args.options.url}...`);
             }
 
-            return request.post(this.getRequestDeleteSite(args, cmd));
+            return this.deleteSite(args.options.url, args.options.wait, this.accessToken as string, cmd);
           }
         })
-        .then((res: string): Promise<void> => {
-          return this.processResponse(res, cmd, args);
+        .then((): Promise<void> => {
+          return this.ensureFormDigest(cmd);
         })
         .then((): Promise<void> => {
-          // Skip Recycle Bin combines the deletion and removal. 
-          // We can only remove from the recycle bin after a succesfull deletion action
-          // Therefore an additional call has to be made in case of the skipRecycleBin
-          return new Promise<void>((resolve: () => void, reject: (error: any) => void): void => {
-            if (args.options.skipRecycleBin) {
-              if (this.verbose) {
-                cmd.log(`Also deleting site collection from recycle bin ${args.options.url}...`)
-              }
-
-              // TODO: 15 sec is timeout based on polling intervall, check PowerShell to see what value should be oke
-              this.timeout = setTimeout(() => {
-                request.post(this.getRequestDeleteSiteFromRecycleBin(args, cmd)).then((res: string): void => {
-                  this.processResponse(res, cmd, args).then((): void => {
-                    return resolve();
-                  });
-                });
-              }, 15000)
-
+          if (args.options.skipRecycleBin) {
+            if (this.verbose) {
+              cmd.log(`Also deleting site collection from recycle bin ${args.options.url}...`)
             }
-            else {
-              Promise.resolve();
-            }
-          });
+            return this.deleteSiteFromTheRecycleBin(args.options.url, args.options.wait, this.accessToken as string, cmd);
+
+          }
+          else {
+            return Promise.resolve();
+          }
         })
         .then((): void => {
           if (this.verbose) {
@@ -123,6 +105,7 @@ class SpoSiteClassicRemoveCommand extends SpoCommand {
 
           cb();
         }, (err: any): void => this.handleRejectedPromise(err, cmd, cb));
+
     }
 
     if (args.options.confirm) {
@@ -143,6 +126,7 @@ class SpoSiteClassicRemoveCommand extends SpoCommand {
         }
       });
     }
+
   }
 
   public cancel(): CommandCancel {
@@ -152,7 +136,7 @@ class SpoSiteClassicRemoveCommand extends SpoCommand {
       }
     }
   }
-  
+
   private ensureFormDigest(cmd: CommandInstance): Promise<void> {
     return new Promise<void>((resolve: () => void, reject: (error: any) => void): void => {
       const now: Date = new Date();
@@ -186,70 +170,111 @@ class SpoSiteClassicRemoveCommand extends SpoCommand {
     });
   }
 
-  private getRequestDeleteSite(args: CommandArgs, cmd: CommandInstance): any {
-    const requestOptions: any = {
-      url: `${auth.site.url}/_vti_bin/client.svc/ProcessQuery`,
-      headers: Utils.getRequestHeaders({
-        authorization: `Bearer ${auth.service.accessToken}`,
-        'X-RequestDigest': this.formDigest
-      }),
-      body: `<Request AddExpandoFieldTypeSuffix="true" SchemaVersion="15.0.0.0" LibraryVersion="16.0.0.0" ApplicationName="${config.applicationName}" xmlns="http://schemas.microsoft.com/sharepoint/clientquery/2009"><Actions><ObjectPath Id="55" ObjectPathId="54"/><ObjectPath Id="57" ObjectPathId="56"/><Query Id="58" ObjectPathId="54"><Query SelectAllProperties="true"><Properties/></Query></Query><Query Id="59" ObjectPathId="56"><Query SelectAllProperties="false"><Properties><Property Name="IsComplete" ScalarProperty="true"/><Property Name="PollingInterval" ScalarProperty="true"/></Properties></Query></Query></Actions><ObjectPaths><Constructor Id="54" TypeId="{268004ae-ef6b-4e9b-8425-127220d84719}"/><Method Id="56" ParentId="54" Name="RemoveSite"><Parameters><Parameter Type="String">${Utils.escapeXml(args.options.url)}</Parameter></Parameters></Method></ObjectPaths></Request>`
-    };
-
-    if (this.debug) {
-      cmd.log('Executing web request...');
-      cmd.log(requestOptions);
-      cmd.log('');
-    }
-
-    return requestOptions;
-  }
-
-  private getRequestDeleteSiteFromRecycleBin(args: CommandArgs, cmd: CommandInstance): any {
-    const requestOptions: any = {
-      url: `${auth.site.url}/_vti_bin/client.svc/ProcessQuery`,
-      headers: Utils.getRequestHeaders({
-        authorization: `Bearer ${auth.service.accessToken} `,
-        'X-RequestDigest': this.formDigest
-      }),
-      body: `<Request AddExpandoFieldTypeSuffix="true" SchemaVersion="15.0.0.0" LibraryVersion="16.0.0.0" ApplicationName="${config.applicationName}" xmlns="http://schemas.microsoft.com/sharepoint/clientquery/2009"><Actions><ObjectPath Id="63" ObjectPathId="62" /><ObjectPath Id="65" ObjectPathId="64" /><Query Id="66" ObjectPathId="64"><Query SelectAllProperties="false"><Properties><Property Name="IsComplete" ScalarProperty="true" /><Property Name="PollingInterval" ScalarProperty="true" /></Properties></Query></Query></Actions><ObjectPaths><Constructor Id="62" TypeId="{268004ae-ef6b-4e9b-8425-127220d84719}" /><Method Id="64" ParentId="62" Name="RemoveDeletedSite"><Parameters><Parameter Type="String">${Utils.escapeXml(args.options.url)}</Parameter></Parameters></Method></ObjectPaths></Request>`
-    };
-
-    if (this.debug) {
-      cmd.log('Executing web request...');
-      cmd.log(requestOptions);
-      cmd.log('');
-    }
-
-    return requestOptions;
-  }
-
-  private processResponse(res: string, cmd: CommandInstance, args: CommandArgs): Promise<void> {
+  private deleteSite(url: string, wait: boolean, accessToken: string, cmd: CommandInstance): Promise<void> {
     return new Promise<void>((resolve: () => void, reject: (error: any) => void): void => {
-      if (this.debug) {
-        cmd.log('Response:');
-        cmd.log(res);
-        cmd.log('');
-      }
+      this
+        .ensureFormDigest(cmd)
+        .then((): request.RequestPromise => {
+          if (this.verbose) {
+            cmd.log(`Deleting site ${url} ...`);
+          }
 
-      const json: ClientSvcResponse = JSON.parse(res);
-      const response: ClientSvcResponseContents = json[0];
-      if (response.ErrorInfo) {
-        reject(response.ErrorInfo.ErrorMessage);
-      }
-      else {
-        const operation: SpoOperation = json[json.length - 1];
-        let isComplete: boolean = operation.IsComplete;
+          const requestOptions: any = {
+            url: `${auth.site.url}/_vti_bin/client.svc/ProcessQuery`,
+            headers: Utils.getRequestHeaders({
+              authorization: `Bearer ${auth.service.accessToken}`,
+              'X-RequestDigest': this.formDigest
+            }),
+            body: `<Request AddExpandoFieldTypeSuffix="true" SchemaVersion="15.0.0.0" LibraryVersion="16.0.0.0" ApplicationName="${config.applicationName}" xmlns="http://schemas.microsoft.com/sharepoint/clientquery/2009"><Actions><ObjectPath Id="55" ObjectPathId="54"/><ObjectPath Id="57" ObjectPathId="56"/><Query Id="58" ObjectPathId="54"><Query SelectAllProperties="true"><Properties/></Query></Query><Query Id="59" ObjectPathId="56"><Query SelectAllProperties="false"><Properties><Property Name="IsComplete" ScalarProperty="true"/><Property Name="PollingInterval" ScalarProperty="true"/></Properties></Query></Query></Actions><ObjectPaths><Constructor Id="54" TypeId="{268004ae-ef6b-4e9b-8425-127220d84719}"/><Method Id="56" ParentId="54" Name="RemoveSite"><Parameters><Parameter Type="String">${Utils.escapeXml(url)}</Parameter></Parameters></Method></ObjectPaths></Request>`
+          };
 
-        if (!args.options.wait || isComplete) {
-          resolve();
-          return;
-        }
+          if (this.debug) {
+            cmd.log('Executing web request...');
+            cmd.log(requestOptions);
+            cmd.log('');
+          }
 
-        this.timeout = setTimeout(() => {
-          this.waitUntilFinished(JSON.stringify(operation._ObjectIdentity_), resolve, reject, this.accessToken as string, cmd);
-        }, operation.PollingInterval);
-      }
+          return request.post(requestOptions);
+        })
+        .then((res: string): void => {
+          if (this.debug) {
+            cmd.log('Response:');
+            cmd.log(res);
+            cmd.log('');
+          }
+
+          const json: ClientSvcResponse = JSON.parse(res);
+          const response: ClientSvcResponseContents = json[0];
+          if (response.ErrorInfo) {
+            reject(response.ErrorInfo.ErrorMessage);
+          }
+          else {
+            const operation: SpoOperation = json[json.length - 1];
+            let isComplete: boolean = operation.IsComplete;
+            if (!wait || isComplete) {
+              resolve();
+              return;
+            }
+
+            setTimeout(() => {
+              this.waitUntilFinished(JSON.stringify(operation._ObjectIdentity_), resolve, reject, accessToken, cmd);
+            }, operation.PollingInterval);
+          }
+        });
+    });
+  }
+
+  private deleteSiteFromTheRecycleBin(url: string, wait: boolean, accessToken: string, cmd: CommandInstance): Promise<void> {
+    return new Promise<void>((resolve: () => void, reject: (error: any) => void): void => {
+      this
+        .ensureFormDigest(cmd)
+        .then((): request.RequestPromise => {
+          if (this.verbose) {
+            cmd.log(`Deleting site ${url} from the recycle bin...`);
+          }
+
+          const requestOptions: any = {
+            url: `${auth.site.url}/_vti_bin/client.svc/ProcessQuery`,
+            headers: Utils.getRequestHeaders({
+              authorization: `Bearer ${auth.service.accessToken}`,
+              'X-RequestDigest': this.formDigest
+            }),
+            body: `<Request AddExpandoFieldTypeSuffix="true" SchemaVersion="15.0.0.0" LibraryVersion="16.0.0.0" ApplicationName="${config.applicationName}" xmlns="http://schemas.microsoft.com/sharepoint/clientquery/2009"><Actions><ObjectPath Id="185" ObjectPathId="184" /><Query Id="186" ObjectPathId="184"><Query SelectAllProperties="false"><Properties><Property Name="IsComplete" ScalarProperty="true" /><Property Name="PollingInterval" ScalarProperty="true" /></Properties></Query></Query></Actions><ObjectPaths><Method Id="184" ParentId="175" Name="RemoveDeletedSite"><Parameters><Parameter Type="String">${Utils.escapeXml(url)}</Parameter></Parameters></Method><Constructor Id="175" TypeId="{268004ae-ef6b-4e9b-8425-127220d84719}" /></ObjectPaths></Request>`
+          };
+
+          if (this.debug) {
+            cmd.log('Executing web request...');
+            cmd.log(requestOptions);
+            cmd.log('');
+          }
+
+          return request.post(requestOptions);
+        })
+        .then((res: string): void => {
+          if (this.debug) {
+            cmd.log('Response:');
+            cmd.log(res);
+            cmd.log('');
+          }
+
+          const json: ClientSvcResponse = JSON.parse(res);
+          const response: ClientSvcResponseContents = json[0];
+          if (response.ErrorInfo) {
+            reject(response.ErrorInfo.ErrorMessage);
+          }
+          else {
+            const operation: SpoOperation = json[json.length - 1];
+            let isComplete: boolean = operation.IsComplete;
+            if (!wait || isComplete) {
+              resolve();
+              return;
+            }
+
+            setTimeout(() => {
+              this.waitUntilFinished(JSON.stringify(operation._ObjectIdentity_), resolve, reject, accessToken, cmd);
+            }, operation.PollingInterval);
+          }
+        });
     });
   }
 
@@ -303,7 +328,7 @@ class SpoSiteClassicRemoveCommand extends SpoCommand {
               process.stdout.write('\n');
             }
 
-            resolve();
+            Promise.resolve();
             return;
           }
 
