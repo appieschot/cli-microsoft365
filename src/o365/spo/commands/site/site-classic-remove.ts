@@ -84,9 +84,6 @@ class SpoSiteClassicRemoveCommand extends SpoCommand {
           }
         })
         .then((): Promise<void> => {
-          return this.ensureFormDigest(cmd);
-        })
-        .then((): Promise<void> => {
           if (args.options.skipRecycleBin) {
             if (this.verbose) {
               cmd.log(`Also deleting site collection from recycle bin ${args.options.url}...`)
