@@ -403,20 +403,20 @@ has been fully provisioned.
   Examples:
 
 Remove the site based on URL, and place it in the recycle bin
-${ chalk.grey('https://contoso.sharepoint.com/sites/project-x')}
-${ chalk.grey(config.delimiter)} ${commands.SITE_CLASSIC_REMOVE} --url https://contoso.sharepoint.com/sites/project-x 
+${ chalk.grey('https://contoso.sharepoint.com/sites/demosite')}
+${ chalk.grey(config.delimiter)} ${commands.SITE_CLASSIC_REMOVE} --url https://contoso.sharepoint.com/sites/demosite 
 
 Remove the site based on URL permanently
-${ chalk.grey('https://contoso.sharepoint.com/sites/project-x')}
-${ chalk.grey(config.delimiter)} ${commands.SITE_CLASSIC_REMOVE} --url https://contoso.sharepoint.com/sites/project-x --skipRecycleBin
+${ chalk.grey('https://contoso.sharepoint.com/sites/demosite')}
+${ chalk.grey(config.delimiter)} ${commands.SITE_CLASSIC_REMOVE} --url https://contoso.sharepoint.com/sites/demosite --skipRecycleBin
 
 Remove the site based on URL from the recycle bin
-${ chalk.grey('https://contoso.sharepoint.com/sites/project-x')}
-${ chalk.grey(config.delimiter)} ${commands.SITE_CLASSIC_REMOVE} --url https://contoso.sharepoint.com/sites/project-x --fromRecycleBin
+${ chalk.grey('https://contoso.sharepoint.com/sites/demosite')}
+${ chalk.grey(config.delimiter)} ${commands.SITE_CLASSIC_REMOVE} --url https://contoso.sharepoint.com/sites/demosite --fromRecycleBin
 
 Remove the site based on URL permanently and wait for completion 
-      ${ chalk.grey('https://contoso.sharepoint.com/sites/project-x')}
-        ${ chalk.grey(config.delimiter)} ${commands.SITE_CLASSIC_REMOVE} --url https://contoso.sharepoint.com/sites/project-x --wait --skipRecycleBin
+      ${ chalk.grey('https://contoso.sharepoint.com/sites/demosite')}
+        ${ chalk.grey(config.delimiter)} ${commands.SITE_CLASSIC_REMOVE} --url https://contoso.sharepoint.com/sites/demosite --wait --skipRecycleBin
 `);
   }
 }
