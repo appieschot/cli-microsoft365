@@ -18,6 +18,7 @@ Option|Description
 `--fromRecycleBin`|set to remove the site from the Recycle Bin
 `--wait`|Wait for the site to be removed before completing the command
 `--confirm`|Don't prompt for confirming removing the file
+`-o, --output [output]`|Output type. `json|text`. Default `text`
 `--verbose`|Runs command with verbose logging
 `--debug`|Runs command with debug logging
 
@@ -36,19 +37,19 @@ Option|Description
 Remove the site based on URL, and place it in the recycle bin
 
 ```sh
-spo site classic remove --url https://contoso.sharepoint.com/sites/project-x
+spo site classic remove --url https://contoso.sharepoint.com/sites/demosite
 ```
 
 Remove the site based on URL permanently 
 
 ```sh
-spo site classic remove --url https://contoso.sharepoint.com/sites/project-x --skipRecycleBin 
+spo site classic remove --url https://contoso.sharepoint.com/sites/demosite --skipRecycleBin 
 ```
 
 Remove the site based on URL from the recycle bin
 
 ```sh
-spo site classic remove --url https://contoso.sharepoint.com/sites/project-x --fromRecycleBin 
+spo site classic remove --url https://contoso.sharepoint.com/sites/demosite --fromRecycleBin 
 ```
 
 Remove the site based on URL permanently and wait for completion

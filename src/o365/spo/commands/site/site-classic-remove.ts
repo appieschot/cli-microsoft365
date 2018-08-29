@@ -395,10 +395,10 @@ class SpoSiteClassicRemoveCommand extends SpoCommand {
         Deleting and creating classic site collections is by default asynchronous
   and depending on the current state of Office 365, might take up to few
 minutes.If you're building a script with steps that require the site to be
-fully provisioned, you should use the ${ chalk.blue('--wait')} flag.When
+fully deleted, you should use the ${ chalk.blue('--wait')} flag.When
 using this flag, the ${ chalk.blue(this.getCommandName())} command will keep
 running until it received confirmation from Office 365 that the site
-has been fully provisioned.
+has been fully deleted.
 
   Examples:
 
