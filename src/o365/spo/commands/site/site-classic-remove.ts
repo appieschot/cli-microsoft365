@@ -283,7 +283,7 @@ class SpoSiteClassicRemoveCommand extends SpoCommand {
           cmd.log(`Checking if operation ${operationId} completed...`);
         }
 
-        if (this.verbose) {
+        if (!this.debug && this.verbose) {
           this.dots += '.';
           process.stdout.write(`\r${this.dots}`);
         }
