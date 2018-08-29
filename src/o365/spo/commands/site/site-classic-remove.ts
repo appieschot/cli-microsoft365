@@ -283,7 +283,7 @@ class SpoSiteClassicRemoveCommand extends SpoCommand {
           cmd.log(`Checking if operation ${operationId} completed...`);
         }
 
-        if (!this.debug && this.verbose) {
+        if (this.verbose) {
           this.dots += '.';
           process.stdout.write(`\r${this.dots}`);
         }
@@ -325,7 +325,7 @@ class SpoSiteClassicRemoveCommand extends SpoCommand {
               process.stdout.write('\n');
             }
 
-            Promise.resolve();
+            resolve();
             return;
           }
 
