@@ -15,6 +15,7 @@ export default {
   O365GROUP_REMOVE: `${prefix} o365group remove`,
   O365GROUP_RESTORE: `${prefix} o365group restore`,
   SITECLASSIFICATION_GET: `${prefix} siteclassification get`,
+  SITECLASSIFICATION_ENABLE: `${prefix} siteclassification enable`,
   STATUS: `${prefix} status`,
   TEAMS_LIST: `${prefix} teams list`,
   USER_GET: `${prefix} user get`,
