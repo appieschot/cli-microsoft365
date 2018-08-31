@@ -3,20 +3,23 @@ import config from '../../../../config';
 import commands from '../../commands';
 import * as request from 'request-promise-native';
 import GlobalOptions from '../../../../GlobalOptions';
+import {
+  CommandOption, CommandValidate
+} from '../../../../Command';
 import Utils from '../../../../Utils';
 import GraphCommand from '../../GraphCommand';
-import { CommandOption, CommandValidate } from '../../../../Command';
+import { DirectorySetting, UpdateDirectorySetting } from './DirectorySetting';
+import { DirectorySettingValue } from './DirectorySettingValue';
 
 const vorpal: Vorpal = require('../../../../vorpal-init');
 
 interface CommandArgs {
   options: Options;
-
 }
 
 interface Options extends GlobalOptions {
-  classifications: string;
-  defaultClassification: string;
+  classifications: String;
+  defaultClassification: String;
   usageGuidelinesUrl?: string;
 }
 
@@ -33,16 +36,84 @@ class GraphO365SiteClassificationEnableCommand extends GraphCommand {
     const telemetryProps: any = super.getTelemetryProperties(args);
     telemetryProps.classifications = args.options.classifications;
     telemetryProps.defaultClassification = args.options.defaultClassification;
-    telemetryProps.usageGuidelinesUrl = args.options.usageGuidelinesUrl;
+    telemetryProps.usageGuidelinesUrl = typeof args.options.usageGuidelinesUrl !== 'undefined';
     return telemetryProps;
   }
 
-  public commandAction(cmd: CommandInstance, args: CommandArgs, cb: (err?: any) => void): void {
+  public commandAction(cmd: CommandInstance, args: CommandArgs, cb: () => void): void {
     auth
       .ensureAccessToken(auth.service.resource, cmd, this.debug)
       .then((): request.RequestPromise => {
-        // ToDo: Handle nullable usageguidelinesurl prop & check templateId
-        //
+        const requestOptions: any = {
+          url: `${auth.service.resource}/beta/directorySettingTemplates`,
+          headers: Utils.getRequestHeaders({
+            authorization: `Bearer ${auth.service.accessToken}`,
+            accept: 'application/json;odata.metadata=none'
+          }),
+          json: true
+        };
+
+        if (this.debug) {
+          cmd.log('Executing web request...');
+          cmd.log(requestOptions);
+          cmd.log('');
+        }
+
+        return request.get(requestOptions);
+      })
+      .then(((res: any): Promise<UpdateDirectorySetting> => {
+
+        const unifiedGroupSetting: DirectorySetting[] = res.value.filter((directorySetting: DirectorySetting): boolean => {
+          return directorySetting.displayName === 'Group.Unified';
+        });
+
+        if (unifiedGroupSetting == null || unifiedGroupSetting.length == 0) {
+          Promise.reject(("Missing DirectorySettingTemplate for \"Group.Unified\""));
+        }
+
+        let updatedDirSettings: UpdateDirectorySetting = new UpdateDirectorySetting();
+        updatedDirSettings.templateId = unifiedGroupSetting[0].id;
+
+        // ToDo: Fix Usage GuideLines Url :) 
+        unifiedGroupSetting[0].values.forEach((directorySetting: DirectorySettingValue) => {
+          switch (directorySetting.name) {
+            case "ClassificationList":
+              updatedDirSettings.values.push({
+                "name": directorySetting.name,
+                "value": args.options.classifications as string
+              }); break;
+            case "DefaultClassification":
+              updatedDirSettings.values.push({
+                "name": directorySetting.name,
+                "value": args.options.defaultClassification as string
+              }); break;
+            case "UsageGuidelinesUrl":
+              if (args.options.usageGuidelinesUrl) {
+                updatedDirSettings.values.push({
+                  "name": directorySetting.name,
+                  "value": args.options.usageGuidelinesUrl as string
+                });
+              }
+              else {
+                updatedDirSettings.values.push({
+                  "name": directorySetting.name,
+                  "value": directorySetting.defaultValue as string
+                })
+              }
+              break;
+            default:
+              updatedDirSettings.values.push({
+                "name": directorySetting.name,
+                "value": directorySetting.defaultValue as string
+              }); break;
+          }
+        });
+
+        return Promise.resolve(updatedDirSettings);
+      }))
+      .then((dirSettings: UpdateDirectorySetting): request.RequestPromise => {
+        console.log(JSON.stringify(dirSettings));
+
         const requestOptions: any = {
           url: `${auth.service.resource}/beta/settings`,
           headers: Utils.getRequestHeaders({
@@ -51,21 +122,7 @@ class GraphO365SiteClassificationEnableCommand extends GraphCommand {
             'content-type': 'application/json'
           }),
           json: true,
-          body: JSON.parse(
-            `{
-              "templateId": "62375ab9-6b52-47ed-826b-58e47e0e304b",
-              "values": [{
-                "name": "ClassificationList",
-                "value": "${args.options.classifications}"
-              }, {
-                "name": "DefaultClassification",
-                "value": "${args.options.defaultClassification}"
-              }, {
-                "name": "UsageGuidelinesUrl",
-                "value": "${args.options.usageGuidelinesUrl ? null : args.options.usageGuidelinesUrl || ''}"
-              }]
-            }`
-          )
+          body: dirSettings,
         };
 
         if (this.debug) {
@@ -83,53 +140,9 @@ class GraphO365SiteClassificationEnableCommand extends GraphCommand {
           cmd.log('');
         }
 
-        // if (res.value.length == 0) {
-        //   cb(new CommandError('Site classification is not enabled.'));
-        //   return;
-        // }
-
-        // const unifiedGroupSetting: DirectorySetting[] = res.value.filter((directorySetting: DirectorySetting): boolean => {
-        //   return directorySetting.displayName === 'Group.Unified';
-        // });
-
-        // if (unifiedGroupSetting == null || unifiedGroupSetting.length == 0) {
-        //   cb(new CommandError("Missing DirectorySettingTemplate for \"Group.Unified\""));
-        //   return;
-        // }
-
-        // const siteClassificationsSettings: SiteClassificationSettings = new SiteClassificationSettings();
-
-        // // Get the classification list
-        // const classificationList: DirectorySettingValue[] = unifiedGroupSetting[0].values.filter((directorySetting: DirectorySettingValue): boolean => {
-        //   return directorySetting.name === 'ClassificationList';
-        // });
-
-        // siteClassificationsSettings.Classifications = [];
-        // if (classificationList != null && classificationList.length > 0) {
-        //   siteClassificationsSettings.Classifications = classificationList[0].value.split(',');
-        // }
-
-        // // Get the UsageGuidancelinesUrl
-        // const guidanceUrl: DirectorySettingValue[] = unifiedGroupSetting[0].values.filter((directorySetting: DirectorySettingValue): boolean => {
-        //   return directorySetting.name === 'UsageGuidelinesUrl';
-        // });
-
-        // siteClassificationsSettings.UsageGuidelinesUrl = "";
-        // if (guidanceUrl != null && guidanceUrl.length > 0) {
-        //   siteClassificationsSettings.UsageGuidelinesUrl = guidanceUrl[0].value;
-        // }
-
-        // // Get the DefaultClassification
-        // const defaultClassification: DirectorySettingValue[] = unifiedGroupSetting[0].values.filter((directorySetting: DirectorySettingValue): boolean => {
-        //   return directorySetting.name === 'DefaultClassification';
-        // });
-
-        // siteClassificationsSettings.DefaultClassification = "";
-        // if (defaultClassification != null && defaultClassification.length > 0) {
-        //   siteClassificationsSettings.DefaultClassification = defaultClassification[0].value;
-        // }
-
-        // cmd.log(siteClassificationsSettings);
+        // ToDo: Handle succes
+        // ToDO: Handdle error in tests (Error: A conflicting object with one or more of the specified property values is present in the directory.)
+        // handle error if required
 
         cb();
       }, (err: any) => this.handleRejectedODataJsonPromise(err, cmd, cb));
@@ -138,16 +151,16 @@ class GraphO365SiteClassificationEnableCommand extends GraphCommand {
   public options(): CommandOption[] {
     const options: CommandOption[] = [
       {
-        option: '-c, --classifications',
-        description: 'comma-separated list of classifications to enable in the tenant'
+        option: '-c, --classifications <classifications>',
+        description: 'Comma-separated list of classifications to enable in the tenant'
       },
       {
-        option: '-d, --defaultClassification',
+        option: '-d, --defaultClassification <defaultClassification>',
         description: 'classification to use by default'
       },
       {
-        option: '--usageGuidelinesUrl',
-        description: 'URL with additional information that should be displayed when choosing the classification for the given site'
+        option: '--usageGuidelinesUrl <usageGuidelinesUrl>',
+        description: 'URL with additional information that should be displayed when choosing the classification for the given site',
       }
     ];
 
