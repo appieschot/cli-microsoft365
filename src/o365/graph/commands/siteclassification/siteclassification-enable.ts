@@ -21,6 +21,7 @@ interface Options extends GlobalOptions {
   classifications: String;
   defaultClassification: String;
   usageGuidelinesUrl?: string;
+  guestUsageGuidelinesUrl?: string;
 }
 
 class GraphO365SiteClassificationEnableCommand extends GraphCommand {
@@ -62,19 +63,18 @@ class GraphO365SiteClassificationEnableCommand extends GraphCommand {
         return request.get(requestOptions);
       })
       .then(((res: any): Promise<UpdateDirectorySetting> => {
-
+        
         const unifiedGroupSetting: DirectorySetting[] = res.value.filter((directorySetting: DirectorySetting): boolean => {
           return directorySetting.displayName === 'Group.Unified';
         });
 
         if (unifiedGroupSetting == null || unifiedGroupSetting.length == 0) {
-          Promise.reject(("Missing DirectorySettingTemplate for \"Group.Unified\""));
+          Promise.reject("Missing DirectorySettingTemplate for \"Group.Unified\"");
         }
 
         let updatedDirSettings: UpdateDirectorySetting = new UpdateDirectorySetting();
         updatedDirSettings.templateId = unifiedGroupSetting[0].id;
 
-        // ToDo: Fix Usage GuideLines Url :) 
         unifiedGroupSetting[0].values.forEach((directorySetting: DirectorySettingValue) => {
           switch (directorySetting.name) {
             case "ClassificationList":
@@ -92,6 +92,20 @@ class GraphO365SiteClassificationEnableCommand extends GraphCommand {
                 updatedDirSettings.values.push({
                   "name": directorySetting.name,
                   "value": args.options.usageGuidelinesUrl as string
+                });
+              }
+              else {
+                updatedDirSettings.values.push({
+                  "name": directorySetting.name,
+                  "value": directorySetting.defaultValue as string
+                })
+              }
+              break;
+            case "GuestUsageGuidelinesUrl ":
+              if (args.options.guestUsageGuidelinesUrl) {
+                updatedDirSettings.values.push({
+                  "name": directorySetting.name,
+                  "value": args.options.guestUsageGuidelinesUrl as string
                 });
               }
               else {
@@ -140,9 +154,9 @@ class GraphO365SiteClassificationEnableCommand extends GraphCommand {
           cmd.log('');
         }
 
-        // ToDo: Handle succes
-        // ToDO: Handdle error in tests (Error: A conflicting object with one or more of the specified property values is present in the directory.)
-        // handle error if required
+        if (this.verbose) {
+          cmd.log(vorpal.chalk.green('DONE'));
+        }
 
         cb();
       }, (err: any) => this.handleRejectedODataJsonPromise(err, cmd, cb));
@@ -161,6 +175,10 @@ class GraphO365SiteClassificationEnableCommand extends GraphCommand {
       {
         option: '--usageGuidelinesUrl <usageGuidelinesUrl>',
         description: 'URL with additional information that should be displayed when choosing the classification for the given site',
+      },
+      {
+        option: '--guestUsageGuidelinesUrl <guestUsageGuidelinesUrl>',
+        description: 'URL with additional information that should be displayed to Guest Users when accessing the given site',
       }
     ];
 
@@ -201,7 +219,14 @@ class GraphO365SiteClassificationEnableCommand extends GraphCommand {
 
   Examples:
   
-    // Todo: Fill in the samples
+    Enables SiteClassification without 
+      ${chalk.grey(config.delimiter)} ${this.name} -c "High, Medium, Low" -d "Medium" 
+
+    Enables SiteClassification with a Usage Guidelines Url 
+      ${chalk.grey(config.delimiter)} ${this.name} -c "High, Medium, Low" -d "Medium" -usageGuidelinesUrl "http://aka.ms/pnp"
+
+    Enables SiteClassification with a Usage Guidelines Url and a Guestusage Guidelines Url 
+      ${chalk.grey(config.delimiter)} ${this.name} -c "High, Medium, Low" -d "Medium" -usageGuidelinesUrl "http://aka.ms/pnp" -guestUsageGuidelinesUrl "http://aka.ms/pnp" 
 
   More information:
 
