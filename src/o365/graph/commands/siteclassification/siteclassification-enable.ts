@@ -4,7 +4,7 @@ import commands from '../../commands';
 import * as request from 'request-promise-native';
 import GlobalOptions from '../../../../GlobalOptions';
 import {
-  CommandOption, CommandValidate
+  CommandOption, CommandValidate, CommandError
 } from '../../../../Command';
 import Utils from '../../../../Utils';
 import GraphCommand from '../../GraphCommand';
@@ -18,8 +18,8 @@ interface CommandArgs {
 }
 
 interface Options extends GlobalOptions {
-  classifications: String;
-  defaultClassification: String;
+  classifications: string;
+  defaultClassification: string;
   usageGuidelinesUrl?: string;
   guestUsageGuidelinesUrl?: string;
 }
@@ -38,10 +38,12 @@ class GraphO365SiteClassificationEnableCommand extends GraphCommand {
     telemetryProps.classifications = args.options.classifications;
     telemetryProps.defaultClassification = args.options.defaultClassification;
     telemetryProps.usageGuidelinesUrl = typeof args.options.usageGuidelinesUrl !== 'undefined';
+    telemetryProps.guestUsageGuidelinesUrl = typeof args.options.guestUsageGuidelinesUrl !== 'undefined';
+
     return telemetryProps;
   }
 
-  public commandAction(cmd: CommandInstance, args: CommandArgs, cb: () => void): void {
+  public commandAction(cmd: CommandInstance, args: CommandArgs, cb: (err?: any) => void): void {
     auth
       .ensureAccessToken(auth.service.resource, cmd, this.debug)
       .then((): request.RequestPromise => {
@@ -63,13 +65,14 @@ class GraphO365SiteClassificationEnableCommand extends GraphCommand {
         return request.get(requestOptions);
       })
       .then(((res: any): Promise<UpdateDirectorySetting> => {
-        
+
         const unifiedGroupSetting: DirectorySetting[] = res.value.filter((directorySetting: DirectorySetting): boolean => {
           return directorySetting.displayName === 'Group.Unified';
         });
 
         if (unifiedGroupSetting == null || unifiedGroupSetting.length == 0) {
-          Promise.reject("Missing DirectorySettingTemplate for \"Group.Unified\"");
+          cb(new CommandError("Missing DirectorySettingTemplate for \"Group.Unified\""));
+          return Promise.reject();
         }
 
         let updatedDirSettings: UpdateDirectorySetting = new UpdateDirectorySetting();
@@ -101,7 +104,7 @@ class GraphO365SiteClassificationEnableCommand extends GraphCommand {
                 })
               }
               break;
-            case "GuestUsageGuidelinesUrl ":
+            case "GuestUsageGuidelinesUrl":
               if (args.options.guestUsageGuidelinesUrl) {
                 updatedDirSettings.values.push({
                   "name": directorySetting.name,
@@ -126,7 +129,7 @@ class GraphO365SiteClassificationEnableCommand extends GraphCommand {
         return Promise.resolve(updatedDirSettings);
       }))
       .then((dirSettings: UpdateDirectorySetting): request.RequestPromise => {
-        console.log(JSON.stringify(dirSettings));
+        //console.log(JSON.stringify(dirSettings));
 
         const requestOptions: any = {
           url: `${auth.service.resource}/beta/settings`,
@@ -173,12 +176,12 @@ class GraphO365SiteClassificationEnableCommand extends GraphCommand {
         description: 'classification to use by default'
       },
       {
-        option: '--usageGuidelinesUrl <usageGuidelinesUrl>',
-        description: 'URL with additional information that should be displayed when choosing the classification for the given site',
+        option: '--usageGuidelinesUrl [usageGuidelinesUrl]',
+        description: 'URL with usage guidelines for members'
       },
       {
-        option: '--guestUsageGuidelinesUrl <guestUsageGuidelinesUrl>',
-        description: 'URL with additional information that should be displayed to Guest Users when accessing the given site',
+        option: '--guestUsageGuidelinesUrl [guestUsageGuidelinesUrl]',
+        description: 'URL with usage guidelines for guests'
       }
     ];
 
