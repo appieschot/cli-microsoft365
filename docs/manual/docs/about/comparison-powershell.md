@@ -83,7 +83,7 @@ Remove-SPOMigrationJob|Microsoft.Online.SharePoint.PowerShell|
 Remove-SPOMultiGeoCompanyAllowedDataLocation|Microsoft.Online.SharePoint.PowerShell|
 Remove-SPOPublicCdnOrigin|Microsoft.Online.SharePoint.PowerShell|
 Remove-SPOSdnProvider|Microsoft.Online.SharePoint.PowerShell|
-Remove-SPOSite|Microsoft.Online.SharePoint.PowerShell|
+Remove-SPOSite|Microsoft.Online.SharePoint.PowerShell|[spo site classic remove](../cmd/spo/site/site-classic-remove.md)
 Remove-SPOSiteCollectionAppCatalog|Microsoft.Online.SharePoint.PowerShell|[spo site appcatalog remove](../cmd/spo/site/site-appcatalog-remove.md)
 Remove-SPOSiteCollectionAppCatalogById|Microsoft.Online.SharePoint.PowerShell|
 Remove-SPOSiteDesign|Microsoft.Online.SharePoint.PowerShell|[spo sitedesign remove](../cmd/spo/sitedesign/sitedesign-remove.md)
@@ -221,7 +221,7 @@ Get-PnPAvailableClientSideComponents|SharePointPnPPowerShellOnline|
 Get-PnPAzureADManifestKeyCredentials|SharePointPnPPowerShellOnline|
 Get-PnPAzureCertificate|SharePointPnPPowerShellOnline|
 Get-PnPClientSideComponent|SharePointPnPPowerShellOnline|
-Get-PnPClientSidePage|SharePointPnPPowerShellOnline|[spo page get](../cmd/spo/page/page-get.md), [spo page control list](../cmd/spo/page/page-control-list.md), [spo page control get](../cmd/spo/page/page-control-get.md), [spo page section get](../cmd/spo/page/page-section-get.md), [spo page section list](../cmd/spo/page/page-section-list.md)
+Get-PnPClientSidePage|SharePointPnPPowerShellOnline|[spo page get](../cmd/spo/page/page-get.md), [spo page control list](../cmd/spo/page/page-control-list.md), [spo page control get](../cmd/spo/page/page-control-get.md), [spo page section get](../cmd/spo/page/page-section-get.md), [spo page section list](../cmd/spo/page/page-section-list.md), [spo page column get](../cmd/spo/page/page-column-get.md), [spo page column list](../cmd/spo/page/page-column-list.md)
 Get-PnPConnection|SharePointPnPPowerShellOnline|
 Get-PnPContentType|SharePointPnPPowerShellOnline|[spo contenttype get](../cmd/spo/contenttype/contenttype-get.md)
 Get-PnPContentTypePublishingHubUrl|SharePointPnPPowerShellOnline|
@@ -247,7 +247,7 @@ Get-PnPInformationRightsManagement|SharePointPnPPowerShellOnline|
 Get-PnPInPlaceRecordsManagement|SharePointPnPPowerShellOnline|
 Get-PnPJavaScriptLink|SharePointPnPPowerShellOnline|
 Get-PnPList|SharePointPnPPowerShellOnline|[spo list get](../cmd/spo/list/list-get.md), [spo list list](../cmd/spo/list/list-list.md)
-Get-PnPListItem|SharePointPnPPowerShellOnline|[spo listitem get](../cmd/spo/listitem/listitem-get.md)
+Get-PnPListItem|SharePointPnPPowerShellOnline|[spo listitem get](../cmd/spo/listitem/listitem-get.md), [spo listitem list](../cmd/spo/listitem/listitem-list.md)
 Get-PnPListRecordDeclaration|SharePointPnPPowerShellOnline|
 Get-PnPMasterPage|SharePointPnPPowerShellOnline|
 Get-PnPNavigationNode|SharePointPnPPowerShellOnline|[spo navigation node list](../cmd/spo/navigation/navigation-node-list.md)
@@ -275,7 +275,7 @@ Get-PnPStoredCredential|SharePointPnPPowerShellOnline|
 Get-PnPSubWebs|SharePointPnPPowerShellOnline|
 Get-PnPTaxonomyItem|SharePointPnPPowerShellOnline|
 Get-PnPTaxonomySession|SharePointPnPPowerShellOnline|
-Get-PnPTenant|SharePointPnPPowerShellOnline|
+Get-PnPTenant|SharePointPnPPowerShellOnline|[spo tenant settings list](../cmd/spo/tenant/tenant-settings-list.md)
 Get-PnPTenantAppCatalogUrl|SharePointPnPPowerShellOnline|[spo tenant appcatalogurl get](../cmd/spo/tenant/tenant-appcatalogurl-get.md)
 Get-PnPTenantCdnEnabled|SharePointPnPPowerShellOnline|[spo cdn get](../cmd/spo/cdn/cdn-get.md)
 Get-PnPTenantCdnOrigin|SharePointPnPPowerShellOnline|[spo cdn origin list](../cmd/spo/cdn/cdn-origin-list.md)
@@ -350,7 +350,7 @@ Read-PnPProvisioningTemplate|SharePointPnPPowerShellOnline|
 Register-PnPHubSite|SharePointPnPPowerShellOnline|[spo hubsite register](../cmd/spo/hubsite/hubsite-register.md)
 Remove-PnPApp|SharePointPnPPowerShellOnline|[spo app remove](../cmd/spo/app/app-remove.md)
 Remove-PnPClientSideComponent|SharePointPnPPowerShellOnline|
-Remove-PnPClientSidePage|SharePointPnPPowerShellOnline|
+Remove-PnPClientSidePage|SharePointPnPPowerShellOnline|[spo page remove](../cmd/spo/page/page-remove.md)
 Remove-PnPContentType|SharePointPnPPowerShellOnline|
 Remove-PnPContentTypeFromDocumentSet|SharePointPnPPowerShellOnline|
 Remove-PnPContentTypeFromList|SharePointPnPPowerShellOnline|
