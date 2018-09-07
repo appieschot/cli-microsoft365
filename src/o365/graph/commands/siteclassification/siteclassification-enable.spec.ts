@@ -267,7 +267,7 @@ describe(commands.SITECLASSIFICATION_ENABLE, () => {
         done();
       }
       catch (e) {
-        
+
         done(e);
       }
     });
@@ -367,7 +367,7 @@ describe(commands.SITECLASSIFICATION_ENABLE, () => {
         done();
       }
       catch (e) {
-        
+
         done(e);
       }
     });
@@ -467,7 +467,7 @@ describe(commands.SITECLASSIFICATION_ENABLE, () => {
         done();
       }
       catch (e) {
-        
+
         done(e);
       }
     });
@@ -567,7 +567,7 @@ describe(commands.SITECLASSIFICATION_ENABLE, () => {
         done();
       }
       catch (e) {
-        
+
         done(e);
       }
     });
@@ -667,13 +667,13 @@ describe(commands.SITECLASSIFICATION_ENABLE, () => {
         done();
       }
       catch (e) {
-        
+
         done(e);
       }
     });
   });
 
-  it('sets Office 365 Tenant siteclassification ', (done) => {
+  it('sets Office 365 Tenant siteclassification', (done) => {
     let enableRequestIssued = false;
 
     sinon.stub(request, 'get').callsFake((opts) => {
@@ -767,14 +767,127 @@ describe(commands.SITECLASSIFICATION_ENABLE, () => {
         done();
       }
       catch (e) {
-        
+
         done(e);
       }
     });
   });
-  // ToDo: Handle succes
+
+  it('Handles enabling when already enabled (conflicting errors)', (done) => {
+    sinon.stub(request, 'get').callsFake((opts) => {
+      if (opts.headers.authorization &&
+        opts.headers.authorization.indexOf('Bearer ') === 0 &&
+        opts.url === `https://graph.microsoft.com/beta/directorySettingTemplates`) {
+
+        return Promise.resolve({
+          value: [
+            {
+              "id": "d20c475c-6f96-449a-aee8-08146be187d3",
+              "displayName": "Group.Unified",
+              "templateId": "62375ab9-6b52-47ed-826b-58e47e0e304b",
+              "values": [
+                {
+                  "name": "CustomBlockedWordsList",
+                  "value": ""
+                },
+                {
+                  "name": "EnableMSStandardBlockedWords",
+                  "value": "false"
+                },
+                {
+                  "name": "ClassificationDescriptions",
+                  "value": ""
+                },
+                {
+                  "name": "DefaultClassification",
+                  "value": "TopSecret"
+                },
+                {
+                  "name": "PrefixSuffixNamingRequirement",
+                  "value": ""
+                },
+                {
+                  "name": "AllowGuestsToBeGroupOwner",
+                  "value": "false"
+                },
+                {
+                  "name": "AllowGuestsToAccessGroups",
+                  "value": "true"
+                },
+                {
+                  "name": "GuestUsageGuidelinesUrl",
+                  "value": ""
+                },
+                {
+                  "name": "GroupCreationAllowedGroupId",
+                  "value": ""
+                },
+                {
+                  "name": "AllowToAddGuests",
+                  "value": "true"
+                },
+                {
+                  "name": "UsageGuidelinesUrl",
+                  "value": ""
+                },
+                {
+                  "name": "ClassificationList",
+                  "value": ""
+                },
+                {
+                  "name": "EnableGroupCreation",
+                  "value": "true"
+                }
+              ]
+            }
+          ]
+        });
+      }
+
+      return Promise.reject('Invalid Request');
+    });
+
+    sinon.stub(request, 'post').callsFake((opts) => {
+      if (opts.headers.authorization &&
+        opts.headers.authorization.indexOf('Bearer ') === 0 &&
+        opts.url === `https://graph.microsoft.com/beta/settings` &&
+        JSON.stringify(opts.body) === `{"templateId":"d20c475c-6f96-449a-aee8-08146be187d3","values":[{"name":"CustomBlockedWordsList"},{"name":"EnableMSStandardBlockedWords"},{"name":"ClassificationDescriptions"},{"name":"DefaultClassification","value":"HBI"},{"name":"PrefixSuffixNamingRequirement"},{"name":"AllowGuestsToBeGroupOwner"},{"name":"AllowGuestsToAccessGroups"},{"name":"GuestUsageGuidelinesUrl"},{"name":"GroupCreationAllowedGroupId"},{"name":"AllowToAddGuests"},{"name":"UsageGuidelinesUrl"},{"name":"ClassificationList","value":"HBI, LBI, Top Secret"},{"name":"EnableGroupCreation"}]}`) {
+
+
+        return Promise.reject({
+          error: {
+            "error": {
+              "code": "Request_BadRequest",
+              "message": "A conflicting object with one or more of the specified property values is present in the directory.",
+              "innerError": {
+                "request-id": "fe109878-0adc-4cc8-be2a-e27a70342faa",
+                "date": "2018-09-07T11:38:45"
+              }
+            }
+          }
+
+        });
+      }
+
+      return Promise.reject('Invalid Request');
+
+    });
+
+    auth.service = new Service('https://graph.microsoft.com');
+    auth.service.connected = true;
+    cmdInstance.action = command.action();
+    cmdInstance.action({ options: { debug: false, classifications: "HBI, LBI, Top Secret", defaultClassification: "HBI" } }, (err: any) => {
+      try {
+        assert.equal(JSON.stringify(err), JSON.stringify(new CommandError(`A conflicting object with one or more of the specified property values is present in the directory.`)));
+        done();
+      }
+      catch (e) {
+
+        done(e);
+      }
+    });
+  });
   // ToDO: Handdle error in tests (Error: A conflicting object with one or more of the specified property values is present in the directory.)
-  // handle error if required
 
   it('correctly handles lack of valid access token', (done) => {
     Utils.restore(auth.ensureAccessToken);

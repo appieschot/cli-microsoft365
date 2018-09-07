@@ -129,8 +129,6 @@ class GraphO365SiteClassificationEnableCommand extends GraphCommand {
         return Promise.resolve(updatedDirSettings);
       }))
       .then((dirSettings: UpdateDirectorySetting): request.RequestPromise => {
-        //console.log(JSON.stringify(dirSettings));
-
         const requestOptions: any = {
           url: `${auth.service.resource}/beta/settings`,
           headers: Utils.getRequestHeaders({
