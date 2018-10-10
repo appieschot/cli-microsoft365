@@ -174,11 +174,11 @@ class GraphO365SiteClassificationEnableCommand extends GraphCommand {
         description: 'classification to use by default'
       },
       {
-        option: '--usageGuidelinesUrl [usageGuidelinesUrl]',
+        option: '-u, --usageGuidelinesUrl [usageGuidelinesUrl]',
         description: 'URL with usage guidelines for members'
       },
       {
-        option: '--guestUsageGuidelinesUrl [guestUsageGuidelinesUrl]',
+        option: '-g, --guestUsageGuidelinesUrl [guestUsageGuidelinesUrl]',
         description: 'URL with usage guidelines for guests'
       }
     ];
@@ -224,10 +224,10 @@ class GraphO365SiteClassificationEnableCommand extends GraphCommand {
       ${chalk.grey(config.delimiter)} ${this.name} -c "High, Medium, Low" -d "Medium" 
 
     Enables SiteClassification with a Usage Guidelines Url 
-      ${chalk.grey(config.delimiter)} ${this.name} -c "High, Medium, Low" -d "Medium" -usageGuidelinesUrl "http://aka.ms/pnp"
+      ${chalk.grey(config.delimiter)} ${this.name} -c "High, Medium, Low" -d "Medium" --usageGuidelinesUrl "http://aka.ms/pnp"
 
     Enables SiteClassification with a Usage Guidelines Url and a Guestusage Guidelines Url 
-      ${chalk.grey(config.delimiter)} ${this.name} -c "High, Medium, Low" -d "Medium" -usageGuidelinesUrl "http://aka.ms/pnp" -guestUsageGuidelinesUrl "http://aka.ms/pnp" 
+      ${chalk.grey(config.delimiter)} ${this.name} -c "High, Medium, Low" -d "Medium" --usageGuidelinesUrl "http://aka.ms/pnp" --guestUsageGuidelinesUrl "http://aka.ms/pnp" 
 
   More information:
 

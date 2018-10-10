@@ -1,5 +1,5 @@
 import commands from '../../commands';
-import Command, { CommandError, CommandValidate } from '../../../../Command';
+import Command, { CommandError, CommandOption, CommandValidate } from '../../../../Command';
 import * as sinon from 'sinon';
 import appInsights from '../../../../appInsights';
 import auth from '../../GraphAuth';
@@ -103,6 +103,17 @@ describe(commands.SITECLASSIFICATION_ENABLE, () => {
         done(e);
       }
     });
+  });
+
+  it('supports debug mode', () => {
+    const options = (command.options() as CommandOption[]);
+    let containsOption = false;
+    options.forEach(o => {
+      if (o.option === '--debug') {
+        containsOption = true;
+      }
+    });
+    assert(containsOption);
   });
 
   it('has help referring to the right command', () => {
