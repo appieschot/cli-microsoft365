@@ -13,7 +13,6 @@ describe(commands.SITECLASSIFICATION_ENABLE, () => {
   let vorpal: Vorpal;
   let log: string[];
   let cmdInstance: any;
-  //let cmdInstanceLogSpy: sinon.SinonSpy;
   let trackEvent: any;
   let telemetry: any;
 
@@ -33,7 +32,6 @@ describe(commands.SITECLASSIFICATION_ENABLE, () => {
         log.push(msg);
       }
     };
-    //cmdInstanceLogSpy = sinon.spy(cmdInstance, 'log');
     auth.service = new Service('https://graph.microsoft.com');
     telemetry = null;
   });

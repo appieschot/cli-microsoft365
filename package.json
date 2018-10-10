@@ -21,7 +21,6 @@
     "watch": "tsc -w -p .",
     "clean": "rimraf ./dist",
     "test": "nyc -r=lcov -r=text mocha \"dist/**/*.spec.js\"",
-    "test-graph": "nyc -r=lcov -r=text mocha \"dist/**/siteclassification-enable.spec.js\""
   },
   "keywords": [
     "office 365",
